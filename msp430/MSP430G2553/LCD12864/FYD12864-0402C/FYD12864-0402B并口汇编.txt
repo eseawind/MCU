@@ -1,0 +1,305 @@
+ ;*********************************************
+ ;Controller:ST7920  
+ ;MCU:AT89C52 ,晶体频率：6.0MHz
+ ;LCM:128*64
+ ;LCM型号:FYD12864-0402
+ ;LCM 接口:1:GND 2:VCC 3:V0 4.RS 5:RW 6:E 7--14:DB0-DB7	 15:PSB 16:NC 17:RST 18:Vout 
+;**********************************************
+      RS      EQU   P1.3
+      RW      EQU   P1.4
+      E       EQU   P1.5
+      PSB     EQU   P1.6
+      RST     EQU   P2.7
+      COM     EQU   20H
+      DAT     EQU   21H 
+;******************************以上是接口定义
+START:
+        ORG	0000H
+        MOV	SP,#60H
+	LJMP    DISP        
+;*********************************主程序入口地址	
+        ORG	0040H
+DISP:   MOV     IE,#81H      ;ZHONG DUAN YUN  XU
+        MOV     IP,#01H      ;YOU XIAN ZHONG DUAN
+        MOV     TCON,#00H 
+        CLR     PSB 
+        LCALL   DELAY 
+     	SETB    PSB                ;将PSB置1，通信方式为8位数据并口
+        LCALL   DELAY
+	        
+        MOV     COM,#30H           ;功能设置---8BIT控制界面，基本指令集
+        ACALL   WRI     	   ;调用写指令子程序     
+        LCALL   DELAY              ;延迟39uS
+
+        MOV     COM,#0CH           ;显示打开，光标关，反白显示关 
+        ACALL	WRI		   ;调用写指令子程序
+        LCALL   DELAY              ;延迟39uS
+
+        MOV	COM,#01H           ;清除屏幕显示，将DDRAM的地址计数器归零
+        ACALL   WRI                ;调用写指令子程序
+        LCALL   DELAY              ;延迟39uS 
+
+	MOV     COM,#06H           ;DDRAM的地址计数器（AC）加1
+        ACALL   WRI		   ;调用写指令子程序
+        LCALL   DELAY              ;延迟39uS 
+;**********************************以上是模块初始化        
+
+WCGRAM: MOV     DPTR,#DAB1   ;自编字符入口地址
+        MOV     COM,#40H     ;CG RAM 地址设置为000000
+        ACALL   WRI          ;----------------------写指令子程序 
+        MOV     R1,#00H
+WCG1:   MOV     A,R1
+        MOVC    A,@A+DPTR
+        MOV     DAT,A
+        ACALL   WRD          ;-----------------------写数据子程序
+        INC     R1
+        CJNE    R1,#128,WCG1  ;共写入128KB数据        
+
+;********************************以上是向CGRAM中写入4组自遍汉字字符
+DISPLAY1:
+        MOV     R1,#64        ;DDRAM地址记数器设为最大值
+        MOV     COM,#80H      ;DD RAM 地址-----0000000
+        ACALL   WRI
+DISP1:  MOV     DAT,#00H        
+        ACALL   WRD           ;写入第一字节数据
+        MOV     DAT,#00H 
+        ACALL   WRD           ;写入第二字节数据
+        DJNZ    R1,DISP1     
+        LCALL   DELAY1        ;1S延时子程序
+;*********************************以上是显示第一个自编字型（横线1） 
+DISPLAY2:
+        MOV     R1,#64        ;DDRAM地址记数器设为最大值
+        MOV     COM,#80H      ;DD RAM 地址-----0000000
+        ACALL   WRI
+DISP2:  MOV     DAT,#00H        
+        ACALL   WRD           ;写入第一字节数据
+        MOV     DAT,#02H 
+        ACALL   WRD           ;写入第二字节数据    
+        DJNZ    R1,DISP2        
+        LCALL   DELAY1        ;1S延时子程序
+;*********************************以上是显示第二个自编字型（横线2）
+DISPLAY3:
+        MOV     R1,#64        ;DDRAM地址记数器设为最大值
+        MOV     COM,#80H      ;DD RAM 地址-----0000000
+        ACALL   WRI
+DISP3:  MOV     DAT,#00H        
+        ACALL   WRD           ;写入第一字节数据
+        MOV     DAT,#04H 
+        ACALL   WRD           ;写入第二字节数据  
+        DJNZ    R1,DISP3        
+        LCALL   DELAY1        ;1S延时子程序
+;*********************************以上是显示第三个自编字型（竖线1）
+DISPLAY4:
+        MOV     R1,#64        ;DDRAM地址记数器设为最大值
+        MOV     COM,#80H      ;DD RAM 地址-----0000000
+        ACALL   WRI
+DISP4:  MOV     DAT,#00H        
+        ACALL   WRD           ;写入第一字节数据
+        MOV     DAT,#06H 
+        ACALL   WRD           ;写入第二字节数据      
+        DJNZ    R1,DISP4     
+        LCALL   DELAY1        ;1S延时子程序
+;*********************************以上是显示第四个自编字型（竖线2）  
+DISPLAY5A:
+        MOV     R2,#64        ;DDRAM地址记数器设为最大值
+        MOV     R1,#10H
+        MOV     COM,#80H      ;DD RAM 地址-----0000000
+        ACALL   WRI
+DISP5A: MOV     DAT,R1 
+        ACALL   WRD           ;写入第二字节数据 
+        INC     R1     
+        DJNZ    R2,DISP5A     
+        LCALL   DELAY1        ;1S延时子程序
+;*************************************以上是写入半角字符  
+DISPLAY5:
+        MOV     R2,#64        ;DDRAM地址记数器设为最大值
+        MOV     R1,#0DEH
+        MOV     COM,#80H      ;DD RAM 地址-----0000000
+        ACALL   WRI
+DISP5:  MOV     DAT,#0B4H        
+        ACALL   WRD           ;写入第一字节数据
+        MOV     DAT,R1 
+        ACALL   WRD           ;写入第二字节数据 
+        INC     R1     
+        DJNZ    R2,DISP5     
+        LCALL   DELAY1        ;1S延时子程序
+;**********************************以上是从字库中“崔”字处开始显示
+        MOV     COM,#01H           ;清屏
+        ACALL   WRI     	   ;调用写指令子程序     
+        LCALL   DELAY
+        
+        MOV     COM,#32H           ;功能设置---8BIT控制界面，绘图显示ON
+        ACALL   WRI     	   ;调用写指令子程序     
+        LCALL   DELAY              ;延迟39uS 
+       
+        MOV     COM,#36H           ;功能设置---8BIT控制界面，扩充指令集
+        ACALL   WRI     	   ;调用写指令子程序     
+        LCALL   DELAY              ;延迟39uS
+
+DISPLAY6:
+        MOV     DPTR,#DAB2      ;图形数据入口地址
+        MOV     R2,#32          ;32行,(双屏结构中上半屏)
+        MOV     R3,#80H         ;Y地址寄存器
+DISP6:  MOV     COM,R3          ;设置绘图区的Y地址坐标
+        INC     R3              ;Y地址加1
+        LCALL   WRI
+        MOV     COM,#80H        ;设置绘图区的X地址坐标
+        LCALL   WRI       
+        MOV     R1,#16          ;16*8列
+DISP7:  CLR	A
+        MOVC    A,@A+DPTR
+        MOV     DAT,A                                
+        LCALL   WRD
+        INC     DPTR
+        DJNZ    R1,DISP7
+        DJNZ    R2,DISP6        ;写满全屏的16*8字节X64
+        
+        MOV     R2,#32          ;32行,(双屏结构的下半屏)
+        MOV     R3,#80H         ;Y地址寄存器
+DISP8:  MOV     COM,R3          ;设置绘图区的Y地址坐标
+        INC     R3              ;Y地址加1
+        LCALL   WRI
+        MOV     COM,#88H        ;设置绘图区的X地址坐标
+        LCALL   WRI       
+        MOV     R1,#16          ;16*8列
+DISP9:  CLR	A
+        MOVC    A,@A+DPTR
+        MOV     DAT,A                                
+        LCALL   WRD
+        INC     DPTR
+        DJNZ    R1,DISP9
+        DJNZ    R2,DISP8        ;写满全屏的16*8字节X64
+        LCALL   DELAY1          ;1S延时子程序        
+        LJMP    START           ;从开始处循环显示
+        
+;*******************************************以上是写入一幅图画
+WRI:    PUSH    ACC
+        CLR     RS                 
+        SETB    RW                
+WRI1:   MOV     P0,#0FFH
+        SETB    E              
+        MOV     A,P0            
+        CLR     E              
+        JB      ACC.7,WRI1
+        CLR     RW 
+        MOV     P0,COM
+        SETB    E
+        CLR     E
+        POP     ACC
+        RET
+;******************************************以上是写指令子程序 
+WRD:    PUSH    ACC
+        CLR     RS        
+        SETB    RW        
+WRD1:   MOV     P0,#0FFH
+        SETB    E
+        MOV     A,P0
+        CLR     E
+        JB      ACC.7,WRD1
+        SETB    RS            
+        CLR     RW            
+        MOV     P0,DAT
+        SETB    E             
+        CLR     E             
+        POP     ACC
+        RET
+;******************************************以上是写数据子程序 
+DELAY:  MOV     R7,#0FFH   ;06D
+DELAY4: MOV	R6,#00FH   ;07D
+LOOP2:  DJNZ	R6,LOOP2
+        DJNZ    R7,DELAY4
+        RET
+DELAY1: MOV     R4,#04H
+DELAY11:MOV     R7,#0FFH   ;06D
+DELAY41:MOV	R6,#0FFH   ;07D
+        DJNZ	R6,$
+        DJNZ    R7,DELAY41
+    	DJNZ    R4,DELAY11
+        RET
+XX:     MOV     R5,#0FFH  
+XX1:    MOV	R6,#0FFH  
+XX2:    DJNZ	R6,XX2
+        DJNZ    R5,XX1
+        RET
+;******************************************以上是延时子程序
+DAB1:
+DB  0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H
+DB  0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H
+
+DB  00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH
+DB  00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH,00H,00H,0FFH,0FFH
+
+DB  0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH
+DB  0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH,0AAH
+
+DB  55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H
+DB  55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H,55H
+DAB2:
+
+DB  0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,03FH,0FFH,0F0H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,040H,000H,018H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,0BFH,0FFH,0DCH,000H,001H
+DB  080H,000H,01FH,0FFH,0FFH,000H,000H,000H,000H,000H,000H,0BFH,0FFH,0BCH,000H,001H
+DB  080H,000H,030H,000H,001H,080H,000H,000H,000H,000H,001H,07FH,0FFH,0B8H,000H,001H
+DB  080H,000H,030H,000H,000H,080H,000H,000H,000H,000H,001H,07FH,0FFH,078H,000H,001H
+DB  080H,000H,019H,0FFH,0FEH,0C0H,000H,000H,000H,000H,002H,0FFH,0FFH,070H,000H,001H
+DB  080H,000H,018H,000H,000H,040H,000H,000H,000H,000H,002H,0FFH,0FEH,0F0H,000H,001H
+DB  080H,000H,00CH,001H,0FFH,060H,000H,000H,000H,000H,005H,0FFH,0FEH,0E0H,000H,001H
+DB  080H,000H,00CH,07FH,0D0H,020H,000H,000H,000H,000H,005H,0FFH,0FDH,0E0H,000H,001H
+DB  080H,000H,006H,000H,00FH,0B0H,000H,000H,000H,000H,00BH,0FFH,0FDH,0C0H,000H,001H
+DB  080H,000H,006H,003H,0FCH,010H,000H,000H,000H,000H,00BH,0FFH,0FBH,0C0H,000H,001H
+DB  080H,000H,003H,01FH,000H,018H,000H,000H,000H,000H,017H,0FFH,0FBH,080H,000H,001H
+DB  080H,000H,003H,000H,000H,008H,000H,000H,000H,000H,017H,0FFH,0F7H,080H,000H,001H
+DB  080H,000H,001H,080H,000H,00CH,000H,000H,000H,000H,017H,0FFH,0F7H,000H,000H,001H
+DB  080H,000H,001H,080H,000H,004H,000H,000H,000H,000H,009H,0FFH,0EFH,000H,000H,001H
+DB  080H,000H,000H,0C0H,000H,0F6H,000H,000H,000H,000H,006H,07FH,0EEH,000H,000H,001H
+DB  080H,000H,000H,0C0H,003H,0C2H,000H,000H,000H,000H,001H,09FH,0DEH,000H,000H,001H
+DB  080H,000H,000H,060H,000H,03BH,000H,000H,000H,000H,000H,067H,0DFH,000H,000H,001H
+DB  080H,000H,000H,060H,000H,0E3H,000H,000H,000H,000H,000H,019H,0BFH,000H,000H,001H
+DB  080H,000H,000H,030H,003H,08EH,000H,000H,000H,000H,000H,006H,03FH,000H,000H,001H
+DB  080H,000H,000H,030H,006H,03CH,000H,000H,000H,000H,000H,001H,0FFH,000H,000H,001H
+DB  080H,000H,000H,018H,000H,0F0H,000H,000H,000H,000H,000H,000H,0FFH,000H,000H,001H
+DB  080H,000H,000H,018H,003H,0C0H,000H,000H,000H,000H,000H,00FH,07FH,080H,000H,001H
+DB  080H,000H,000H,00CH,00FH,000H,000H,000H,000H,000H,000H,030H,01FH,0C0H,000H,001H
+DB  080H,000H,000H,00CH,03CH,000H,000H,000H,000H,000H,000H,040H,007H,0E0H,000H,001H
+DB  080H,000H,000H,006H,0F0H,000H,000H,000H,000H,000H,000H,0E0H,01FH,0E0H,000H,001H
+DB  080H,000H,000H,007H,0C0H,000H,000H,000H,000H,000H,000H,0F8H,03FH,0C0H,000H,001H
+DB  080H,000H,000H,003H,000H,000H,000H,000H,000H,000H,000H,07EH,0FFH,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,01FH,0FCH,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,007H,0F0H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H,0C0H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,005H,040H,088H,004H,001H,008H,000H,000H,00AH,081H,010H,004H,000H,020H,001H
+DB  080H,079H,021H,008H,002H,021H,049H,000H,000H,0F2H,042H,010H,004H,047H,010H,001H
+DB  080H,009H,007H,0DFH,07FH,0F7H,0AAH,000H,000H,012H,00FH,0BEH,07FH,0E5H,0FEH,001H
+DB  080H,07FH,0F4H,051H,008H,081H,02CH,000H,000H,0FFH,0E8H,0A2H,044H,047H,000H,001H
+DB  080H,009H,004H,061H,008H,081H,07FH,000H,000H,012H,008H,0C2H,07FH,0C5H,04AH,001H
+DB  080H,00BH,024H,051H,008H,083H,081H,000H,000H,016H,048H,0A2H,044H,045H,06AH,001H
+DB  080H,01DH,047H,0C9H,005H,005H,001H,000H,000H,03AH,08FH,092H,044H,047H,052H,001H
+DB  080H,068H,084H,049H,005H,005H,07FH,000H,000H,0D1H,008H,092H,07FH,0C5H,06AH,001H
+DB  080H,009H,094H,041H,002H,001H,001H,000H,000H,013H,028H,082H,044H,005H,04AH,001H
+DB  080H,00EH,057H,0C1H,00DH,081H,001H,000H,000H,01CH,0AFH,082H,004H,029H,042H,001H
+DB  080H,038H,034H,04EH,070H,071H,07FH,000H,000H,070H,068H,09CH,003H,0EBH,07EH,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  080H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,000H,001H
+DB  0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH,0FFH
+
+  END
+	

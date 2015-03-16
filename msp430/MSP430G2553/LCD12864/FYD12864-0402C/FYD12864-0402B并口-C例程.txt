@@ -1,0 +1,192 @@
+#include <REG52.H>
+
+#define		uchar	unsigned char
+#define		uint	unsigned int
+
+uchar	idata		busy,Line,Col;
+sbit	RS=			P3^7;
+sbit	RW=			P3^6;
+sbit	E=		   	P3^5;
+sbit    PSB=                    P3^4;
+sbit	LCD_RST=                P2^7;
+
+code char STR1[]=	"成都晶磊电子";
+code char STR2[]=	"晶磊";
+code char STR3[]=	"028-82902446";
+code char STR4[]=	"http://shop36938656.taobao.com";
+
+
+void Read_Busy();
+void Delay100us(volatile uint n);
+void Clear_LCD();
+void Write_Single_CMD(uchar cmd);
+void Write_Single_Data(uchar a);
+void Init_LCD();
+void Display(uchar *ptr,uchar ddram) ;
+void Reset_St7920(void);
+void LCM_ShowInvert();
+
+void	main(void)
+{       PSB=1;
+	//uchar i,j;	
+	Reset_St7920();
+	Clear_LCD();
+	Init_LCD();
+	Write_Single_CMD(0X01);
+	Display(STR1,0X80);
+	Display(STR2,0X90);
+	Display(STR3,0X88);
+	Display(STR4,0X98);
+   Delay100us(10000);
+   Display(STR8,0X80);
+	Display(STR5,0X90);
+	Display(STR6,0X88);
+	Display(STR7,0X98);
+
+   Delay100us(10000);
+  
+   Write_Single_CMD(0x34);//设置扩充指令集绘图关
+   Write_Single_CMD(0x04);//第一三行反白显示   
+   Write_Single_CMD(0x30);//设置基本指令集
+   Display(STR9,0X88);	//屏蔽第3行反白
+   Display(STR3,0X88);
+
+ Write_Single_CMD(0x34);//设置扩充指令集绘图关
+ Write_Single_CMD(0x04);//第一三行反白显示 
+ Write_Single_CMD(0x05);//第一三行反白显示 
+    Delay100us(10000);
+
+
+}
+
+ void LCM_ShowInvert(/*uint LineNum*/)/*反白显示函数，LineNum表示要反白显示的行其值为1，2，3，4*/
+  {unsigned char addr_x,addr_y;
+   unsigned char usCol,usValue;
+  Write_Single_CMD(0x36);//设置扩充指令集
+ 
+  for(addr_y=0x80;addr_y<0xa0;addr_y++)   //清上半屏指令
+  { Write_Single_CMD(addr_y);
+    Write_Single_CMD(0x80);      
+    for(addr_x=0;addr_x<0x10;addr_x++)
+     {Write_Single_Data(0);Delay100us(10);}}
+
+/*for(addr_y=0x80;addr_y<0xa0;addr_y++)   //清下半屏指令
+  { Write_Single_CMD(addr_y);
+    Write_Single_CMD(0x88);      
+    for(addr_x=0;addr_x<0x10;addr_x++)
+     {Write_Single_Data(0);Delay100us(10);}}*/
+Write_Single_CMD(0x30);
+   Display(STR5,0X80);
+	Display(STR6,0X90);
+	Display(STR7,0X88);
+	Display(STR8,0X98);
+Delay100us(10000);
+
+   
+    /*while(1)
+     ;*/
+  }
+
+void	Read_Busy(void)		  //读忙操作
+{
+	P0=0x0ff;
+	RS=0;
+	RW=1;
+	do{
+		E=1;
+		busy=P0;
+		E=0;
+	}while(busy>0x7f);
+} 
+
+void	Reset_St7920(void)
+{
+	LCD_RST=0;
+	Delay100us(100);
+	LCD_RST=1;
+	Delay100us(200);
+}
+
+void 	Delay100us(volatile uint n)
+{
+    uchar i;
+    while(n--)
+        for(i=0;i<40;i++)
+            ;
+}
+
+
+
+
+void	Write_Single_CMD(uchar cmd)	 //写单字节命令字
+{
+	Read_Busy();
+	RS=0;
+	RW=0;
+	E=1;
+	P0=cmd;
+	E=0;
+	P0=0xff;
+}
+
+
+
+
+void	Write_Single_Data(uchar a)	//写单字节数据
+{
+	Read_Busy();
+	RS=1;
+	RW=0;
+	E=1;
+	P0=a;
+	E=0;
+	P0=0xff;
+}
+void	Init_LCD(void)		//初始化LCD模块
+{
+	Write_Single_CMD(0x30);	//功能设置--8BIT控制界面，基本指令集
+	Delay100us(10);
+	Write_Single_CMD(0x30);	//功能设置--8BIT控制界面，基本指令集
+	Delay100us(5);
+	Write_Single_CMD(0X0C);
+	Delay100us(5);
+	Write_Single_CMD(0x01);	//清除屏幕显示，将DDRAM的地址计数器清零
+	Delay100us(2);
+	Write_Single_CMD(0x06);	//DDRAM的地址计数器（AC）加1
+	Delay100us(1);
+}
+
+
+
+void Clear_LCD(void)
+{ 
+	Read_Busy();
+	RS=0;
+	RW=0;
+	P0=0x01;
+	E=1;
+	E=0;
+}
+
+
+void	DisplayOn(void)
+
+{
+	Write_Single_CMD(0x0d);	//整体显示开，游标开，游标位置反白禁止
+	
+}
+void 	Display(uchar *ptr,uchar ddram) 
+{
+	uchar i,l,x;
+	l=0;
+
+	Write_Single_CMD(ddram); // 定位显示起始地址
+	while ((ptr[l])!='\0')
+		{l++;}
+	for (i=0;i<l;i++)
+		{ 
+			Write_Single_Data(ptr[i]); //输出单个字符
+		} 
+			
+		
+}
